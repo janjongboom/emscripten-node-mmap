@@ -1,0 +1,15 @@
+{
+  "name": "emscripten-node-mmap",
+  "description": "mmap() driver for emscripten's NODEFS",
+  "author": "Jan Jongboom <janjongboom@gmail.com>",
+  "version": "0.0.1",
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janjongboom/emscripten-node-mmap.git"
+  },
+  "scripts": {
+    "pretest": "npm build .",
+    "test": "node --expose-gc run_tests.js"
+  }
+}
