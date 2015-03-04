@@ -9,7 +9,6 @@
     "url": "https://github.com/janjongboom/emscripten-node-mmap.git"
   },
   "scripts": {
-    "pretest": "npm build .",
-    "test": "node --expose-gc run_tests.js"
+    "pretest": "npm build ."
   }
 }
