@@ -24,7 +24,6 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   printf("mmap.cc %lu %d %d %d %d\n", length, protection, flags, fd, offset);
 
   void* map = mmap(NULL, length, protection, flags, fd, offset);
-  printf("mmap.cc %p\n", map);
   if (map == NULL)
   {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
