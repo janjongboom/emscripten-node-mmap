@@ -1,4 +1,5 @@
 #include <node.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
@@ -39,12 +40,17 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
   }
   printf("mmap.cc mmap succeeded %p\n", map);
-
-  node::Buffer *slowBuffer = node::Buffer::New((char*)map, length, Map_finalise, (void*)length);
+  
+  void* blah = malloc(length);
+  memcpy(blah, map, length);
+  
+  node::Buffer *slowBuffer = node::Buffer::New((char*)blah, length, Map_finalise, (void*)length);
   v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
   v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(buffer_symbol));
   v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
   v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+  
+  free(blah);
 
   char ptrStringBuffer[20];
   sprintf(ptrStringBuffer, "%p", map);
