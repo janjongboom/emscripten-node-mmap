@@ -39,6 +39,13 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
   }
+  
+  int k = 0;
+  for (k = 0; k < 16; k++) {
+    printf("%08x ", map[k]);
+  }
+  printf("\n");
+  
   printf("mmap.cc mmap succeeded %p\n", map);
   
   void* blah = malloc(length);
