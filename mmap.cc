@@ -34,7 +34,7 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   const int offset   = args[4]->ToInteger()->Value();
 
   printf("mmap.cc mmap %lu %d %d %d %d\n", length, protection, flags, fd, offset);
-  uint32_t* map = (uint32_t*)mmap(NULL, length, protection, flags, fd, offset);
+  char* map = (char*)mmap(NULL, length, protection, flags, fd, offset);
   if (map == NULL)
   {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
@@ -42,14 +42,11 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   
   int k = 0;
   for (k = 0; k < 16; k++) {
-    printf("%08x ", map[k]);
+    printf("%08x ", (uint32_t*)map[k]);
   }
   printf("\n");
   
   printf("mmap.cc mmap succeeded %p\n", map);
-  
-  void* blah = malloc(length);
-  memcpy(blah, map, length);
   
   node::Buffer *slowBuffer = node::Buffer::New((char*)blah, length, Map_finalise, (void*)length);
   v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
@@ -57,8 +54,6 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
   v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
   
-  free(blah);
-
   char ptrStringBuffer[20];
   sprintf(ptrStringBuffer, "%p", map);
 
