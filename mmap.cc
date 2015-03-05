@@ -37,11 +37,11 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
   }
   
-	node::Buffer *slowBuffer = node::Buffer::New((char*)map, length, Map_finalise, (void*)length);
-	v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
-	v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(buffer_symbol));
-	v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
-	v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+  node::Buffer *slowBuffer = node::Buffer::New((char*)map, length, Map_finalise, (void*)length);
+  v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
+  v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(buffer_symbol));
+  v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
+  v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
 	
 	actualBuffer->Set(ptr_symbol, Number::New((long)map));
   
