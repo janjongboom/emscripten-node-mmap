@@ -34,7 +34,7 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   const int offset   = args[4]->ToInteger()->Value();
 
   printf("mmap.cc mmap %lu %d %d %d %d\n", length, protection, flags, fd, offset);
-  void* map = mmap(NULL, length, protection, flags, fd, offset);
+  uint32_t* map = (uint32_t*)mmap(NULL, length, protection, flags, fd, offset);
   if (map == NULL)
   {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
