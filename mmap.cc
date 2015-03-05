@@ -2,8 +2,18 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <errno.h>
+#include <node_buffer.h>
+#include <v8.h>
+
+static v8::Persistent<v8::String> buffer_symbol = NODE_PSYMBOL("Buffer");
+static v8::Persistent<v8::String> ptr_symbol = NODE_PSYMBOL("ptr");
 
 using namespace v8;
+
+static void Map_finalise(char *data, void*hint)
+{
+	munmap(data, (size_t)hint);
+}
 
 v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   v8::HandleScope handle_scope;
@@ -21,14 +31,21 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   const int fd         = args[3]->ToInteger()->Value();
   const int offset   = args[4]->ToInteger()->Value();
   
-  printf("mmap.cc %lu %d %d %d %d\n", length, protection, flags, fd, offset);
-
   void* map = mmap(NULL, length, protection, flags, fd, offset);
   if (map == NULL)
   {
     return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
   }
-  return Number::New((long)map);
+  
+	node::Buffer *slowBuffer = node::Buffer::New((char*)map, length, Map_finalise, (void*)length);
+	v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
+	v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(buffer_symbol));
+	v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
+	v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+	
+	actualBuffer->Set(ptr_symbol, Number::New((long)map));
+  
+  return actualBuffer;
 }
 
 v8::Handle<v8::Value> Msync(const v8::Arguments& args) {
@@ -38,14 +55,20 @@ v8::Handle<v8::Value> Msync(const v8::Arguments& args) {
   {
     return v8::ThrowException(
       v8::Exception::Error(
-        v8::String::New("msync requires 3 arguments (addr, length, flags)")));
+        v8::String::New("msync requires 3 arguments (addr, buffer, flags)")));
   }
 
-  void* map              = (void*)args[0]->ToInteger()->Value();  
-  const size_t length    = args[1]->ToInteger()->Value();
-  const int flags        = args[2]->ToInteger()->Value();
+  char* map                  = (char*)args[0]->ToInteger()->Value();  
+  Local<Object> bufferObj    = args[1]->ToObject();
+  char*         data         = node::Buffer::Data(bufferObj);
+  size_t        len          = node::Buffer::Length(bufferObj);
+  const int flags            = args[2]->ToInteger()->Value();
   
-  return Number::New(msync(map, length, flags));
+  for (size_t i = 0; i < len; i++) {
+    map[i] = data[i];
+  }
+  
+  return Number::New(msync(map, len, flags));
 }
 
 v8::Handle<v8::Value> Munmap(const v8::Arguments& args) {
