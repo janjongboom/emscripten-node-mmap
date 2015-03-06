@@ -10,5 +10,8 @@
   },
   "scripts": {
     "pretest": "npm build ."
+  },
+  "dependencies": {
+    "nan": "^1.7.0"
   }
 }

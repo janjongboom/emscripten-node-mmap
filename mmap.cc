@@ -6,9 +6,7 @@
 #include <node_buffer.h>
 #include <v8.h>
 #include <cstdlib>
-
-static v8::Persistent<v8::String> buffer_symbol = NODE_PSYMBOL("Buffer");
-static v8::Persistent<v8::String> ptr_symbol = NODE_PSYMBOL("ptr");
+#include <nan.h>
 
 using namespace v8;
 
@@ -17,14 +15,12 @@ static void Map_finalise(char *data, void*hint)
 	munmap(data, (size_t)hint);
 }
 
-v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
-  v8::HandleScope handle_scope;
+NAN_METHOD(Mmap) {
+  NanScope();
 
   if (args.Length() != 5)
   {
-    return v8::ThrowException(
-      v8::Exception::Error(
-        v8::String::New("mmap requires 5 arguments (length, protection, flags, fd, offset)")));
+    NanThrowError("mmap requires 5 arguments (length, protection, flags, fd, offset)");
   }
 
   const size_t length    = args[0]->ToInteger()->Value();
@@ -33,43 +29,28 @@ v8::Handle<v8::Value> Mmap(const v8::Arguments& args) {
   const int fd         = args[3]->ToInteger()->Value();
   const int offset   = args[4]->ToInteger()->Value();
 
-  printf("mmap.cc mmap %lu %d %d %d %d\n", length, protection, flags, fd, offset);
   char* map = (char*)mmap(NULL, length, protection, flags, fd, offset);
-  if (map == NULL)
+  if (map == MAP_FAILED)
   {
-    return v8::ThrowException(node::ErrnoException(errno, "mmap", ""));
+    NanThrowError("Could not initialize map");
   }
   
-  int k = 0;
-  for (k = 0; k < 16; k++) {
-    printf("%08x ", (uint32_t*)map[k]);
-  }
-  printf("\n");
-  
-  printf("mmap.cc mmap succeeded %p\n", map);
-  
-  node::Buffer *slowBuffer = node::Buffer::New(map, length, Map_finalise, (void*)length);
-  v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
-  v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(buffer_symbol));
-  v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, args[0], v8::Integer::New(0) };
-  v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+  Local<Object> slowBuffer = node::Buffer::New(map, length, Map_finalise, (void*)length);
   
   char ptrStringBuffer[20];
   sprintf(ptrStringBuffer, "%p", map);
 
-  actualBuffer->Set(ptr_symbol, String::New(ptrStringBuffer));
+  slowBuffer->ForceSet(NanNew("ptr"), NanNew<v8::String>(ptrStringBuffer));
 
-  return actualBuffer;
+  NanReturnValue(slowBuffer);
 }
 
-v8::Handle<v8::Value> Msync(const v8::Arguments& args) {
-  v8::HandleScope handle_scope;
+NAN_METHOD(Msync) {
+  NanScope();
 
   if (args.Length() != 3)
   {
-    return v8::ThrowException(
-      v8::Exception::Error(
-        v8::String::New("msync requires 3 arguments (addr, buffer, flags)")));
+    NanThrowError("msync requires 3 arguments (addr, buffer, flags)");
   }
 
   unsigned long long mapPtr  = std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
@@ -84,42 +65,41 @@ v8::Handle<v8::Value> Msync(const v8::Arguments& args) {
     map[i] = data[i];
   }
 
-  return Number::New(msync(map, len, flags));
+  NanReturnValue(NanNew<Number>(msync(map, len, flags)));
 }
 
-v8::Handle<v8::Value> Munmap(const v8::Arguments& args) {
-  v8::HandleScope handle_scope;
+NAN_METHOD(Munmap) {
+  NanScope();
 
   if (args.Length() != 2)
   {
-    return v8::ThrowException(
-      v8::Exception::Error(
-        v8::String::New("munmap requires 2 arguments (addr, length)")));
+    NanThrowError("munmap requires 2 arguments (addr, length)");
   }
 
   unsigned long long mapPtr = std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
   void* map                 = (void*)mapPtr;
   const size_t length       = args[1]->ToInteger()->Value();
 
-  return Number::New(munmap(map, length));
+  NanReturnValue(NanNew<Number>(munmap(map, length)));
 }
 
 void init(Handle<Object> exports) {
-  NODE_SET_METHOD(exports, "mmap", Mmap);
-  NODE_SET_METHOD(exports, "msync", Msync);
-  NODE_SET_METHOD(exports, "munmap", Munmap);
-
-  const v8::PropertyAttribute attribs = (v8::PropertyAttribute) (v8::ReadOnly | v8::DontDelete);
-  exports->Set(v8::String::New("PROT_READ"), v8::Integer::New(PROT_READ), attribs);
-  exports->Set(v8::String::New("PROT_WRITE"), v8::Integer::New(PROT_WRITE), attribs);
-  exports->Set(v8::String::New("PROT_EXEC"), v8::Integer::New(PROT_EXEC), attribs);
-  exports->Set(v8::String::New("PROT_NONE"), v8::Integer::New(PROT_NONE), attribs);
-  exports->Set(v8::String::New("MAP_SHARED"), v8::Integer::New(MAP_SHARED), attribs);
-  exports->Set(v8::String::New("MAP_PRIVATE"), v8::Integer::New(MAP_PRIVATE), attribs);
-  exports->Set(v8::String::New("PAGESIZE"), v8::Integer::New(sysconf(_SC_PAGESIZE)), attribs);
-  exports->Set(v8::String::New("MS_ASYNC"), v8::Integer::New(MS_ASYNC), attribs);
-  exports->Set(v8::String::New("MS_SYNC"), v8::Integer::New(MS_SYNC), attribs);
-  exports->Set(v8::String::New("MS_INVALIDATE"), v8::Integer::New(MS_INVALIDATE), attribs);
+  exports->Set(NanNew<String>("mmap"), NanNew<FunctionTemplate>(Mmap)->GetFunction());
+  exports->Set(NanNew<String>("msync"), NanNew<FunctionTemplate>(Msync)->GetFunction());
+  exports->Set(NanNew<String>("munmap"), NanNew<FunctionTemplate>(Munmap)->GetFunction());
+  
+  // const v8::PropertyAttribute attribs = (v8::PropertyAttribute) (v8::ReadOnly | v8::DontDelete);
+  // I don't know how to get this f&* attribs on properties now in new native modules
+  exports->Set(NanNew<v8::String>("PROT_READ"), NanNew<Number>(PROT_READ));
+  exports->Set(NanNew<v8::String>("PROT_WRITE"), NanNew<Number>(PROT_WRITE));
+  exports->Set(NanNew<v8::String>("PROT_EXEC"), NanNew<Number>(PROT_EXEC));
+  exports->Set(NanNew<v8::String>("PROT_NONE"), NanNew<Number>(PROT_NONE));
+  exports->Set(NanNew<v8::String>("MAP_SHARED"), NanNew<Number>(MAP_SHARED));
+  exports->Set(NanNew<v8::String>("MAP_PRIVATE"), NanNew<Number>(MAP_PRIVATE));
+  exports->Set(NanNew<v8::String>("PAGESIZE"), NanNew<Number>(sysconf(_SC_PAGESIZE)));
+  exports->Set(NanNew<v8::String>("MS_ASYNC"), NanNew<Number>(MS_ASYNC));
+  exports->Set(NanNew<v8::String>("MS_SYNC"), NanNew<Number>(MS_SYNC));
+  exports->Set(NanNew<v8::String>("MS_INVALIDATE"), NanNew<Number>(MS_INVALIDATE));
 }
 
 NODE_MODULE(mmap, init)
