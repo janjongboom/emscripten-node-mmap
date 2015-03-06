@@ -75,22 +75,44 @@ NAN_METHOD(Munmap) {
  */
 NAN_METHOD(geti8) {
   NanScope();
-  printf("yo geti8 %s\n", *v8::String::Utf8Value(args[0]));
+  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
   char* data = (char*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  printf("geti8 %p %d\n", data, data[0]);
   NanReturnValue(NanNew<Number>(data[0]));
 }
 
 NAN_METHOD(geti16) {
   NanScope();
+  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
   uint16_t* data = (uint16_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
   NanReturnValue(NanNew<Number>(data[0]));
 }
 
 NAN_METHOD(geti32) {
   NanScope();
+  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
   uint32_t* data = (uint32_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
   NanReturnValue(NanNew<Number>(data[0]));
+}
+
+NAN_METHOD(seti8) {
+  NanScope();
+  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
+  char* data = (char*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
+  data[0] = static_cast<char>(args[1]->ToInteger()->Value());
+}
+
+NAN_METHOD(seti16) {
+  NanScope();
+  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
+  uint16_t* data = (uint16_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
+  data[0] = static_cast<uint16_t>(args[1]->ToInteger()->Value());
+}
+
+NAN_METHOD(seti32) {
+  NanScope();
+  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
+  uint32_t* data = (uint32_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
+  data[0] = static_cast<uint32_t>(args[1]->ToInteger()->Value());
 }
 
   // Module['HEAP8']   = HEAP8   = createNewProxy(RAWHEAP8, 1, 'geti8');
@@ -113,6 +135,10 @@ void init(Handle<Object> exports) {
   exports->Set(NanNew<String>("geti8"), NanNew<FunctionTemplate>(geti8)->GetFunction());
   exports->Set(NanNew<String>("geti16"), NanNew<FunctionTemplate>(geti16)->GetFunction());
   exports->Set(NanNew<String>("geti32"), NanNew<FunctionTemplate>(geti32)->GetFunction());
+  
+  exports->Set(NanNew<String>("seti8"), NanNew<FunctionTemplate>(seti8)->GetFunction());
+  exports->Set(NanNew<String>("seti16"), NanNew<FunctionTemplate>(seti16)->GetFunction());
+  exports->Set(NanNew<String>("seti32"), NanNew<FunctionTemplate>(seti32)->GetFunction());
   
   // const v8::PropertyAttribute attribs = (v8::PropertyAttribute) (v8::ReadOnly | v8::DontDelete);
   // I don't know how to get this f&* attribs on properties now in new native modules
