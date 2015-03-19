@@ -8,6 +8,21 @@
 #include <cstdlib>
 #include <nan.h>
 
+#define define_getter_setter(T, name, parseValue) \
+NAN_METHOD(get_##name) { \
+  NanScope(); \
+  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, index)"); } \
+  T* data = (T*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16); \
+  NanReturnValue(NanNew<Number>(static_cast<T>(data[args[1]->ToInteger()->Value()]))); \
+} \
+\
+NAN_METHOD(set_##name) { \
+  NanScope(); \
+  if (args.Length() != 3) { NanThrowError("method requires 3 argument (address, index, value)"); } \
+  T* data = (T*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16); \
+  data[args[1]->ToInteger()->Value()] = static_cast<T>(args[2]->To##parseValue()->Value()); \
+}
+
 using namespace v8;
 
 /**
@@ -73,56 +88,14 @@ NAN_METHOD(Munmap) {
 /**
  * Reading values from the map
  */
-NAN_METHOD(geti8) {
-  NanScope();
-  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
-  char* data = (char*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  NanReturnValue(NanNew<Number>(data[0]));
-}
-
-NAN_METHOD(geti16) {
-  NanScope();
-  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
-  uint16_t* data = (uint16_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  NanReturnValue(NanNew<Number>(data[0]));
-}
-
-NAN_METHOD(geti32) {
-  NanScope();
-  if (args.Length() != 1) { NanThrowError("method requires 1 argument (address)"); }
-  uint32_t* data = (uint32_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  NanReturnValue(NanNew<Number>(data[0]));
-}
-
-NAN_METHOD(seti8) {
-  NanScope();
-  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
-  char* data = (char*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  data[0] = static_cast<char>(args[1]->ToInteger()->Value());
-}
-
-NAN_METHOD(seti16) {
-  NanScope();
-  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
-  uint16_t* data = (uint16_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  data[0] = static_cast<uint16_t>(args[1]->ToInteger()->Value());
-}
-
-NAN_METHOD(seti32) {
-  NanScope();
-  if (args.Length() != 2) { NanThrowError("method requires 2 argument (address, value)"); }
-  uint32_t* data = (uint32_t*)std::strtoull(*v8::String::Utf8Value(args[0]), NULL, 16);
-  data[0] = static_cast<uint32_t>(args[1]->ToInteger()->Value());
-}
-
-  // Module['HEAP8']   = HEAP8   = createNewProxy(RAWHEAP8, 1, 'geti8');
-  // Module['HEAP16']  = HEAP16  = createNewProxy(RAWHEAP16, 2, 'geti16');
-  // Module['HEAP32']  = HEAP32  = createNewProxy(RAWHEAP32, 4, 'geti32');
-  // Module['HEAPU8']  = HEAPU8  = createNewProxy(RAWHEAPU8, 1, 'getu8');
-  // Module['HEAPU16'] = HEAPU16 = createNewProxy(RAWHEAPU16, 2, 'getu16');
-  // Module['HEAPU32'] = HEAPU32 = createNewProxy(RAWHEAPU32, 4, 'getu32');
-  // Module['HEAPF32'] = HEAPF32 = createNewProxy(RAWHEAPF32, 4, 'getf32');
-  // Module['HEAPF64'] = HEAPF64 = createNewProxy(RAWHEAPF64, 8, 'getf64'); 
+define_getter_setter(int8_t, int8_t, Integer);
+define_getter_setter(int16_t, int16_t, Integer);
+define_getter_setter(int32_t, int32_t, Integer);
+define_getter_setter(uint8_t, uint8_t, Integer);
+define_getter_setter(uint16_t, uint16_t, Integer);
+define_getter_setter(uint32_t, uint32_t, Integer);
+define_getter_setter(float, float, Number);
+define_getter_setter(double, double, Number);
 
 /**
  * Module initialization
@@ -132,13 +105,23 @@ void init(Handle<Object> exports) {
   exports->Set(NanNew<String>("msync"), NanNew<FunctionTemplate>(Msync)->GetFunction());
   exports->Set(NanNew<String>("munmap"), NanNew<FunctionTemplate>(Munmap)->GetFunction());
   
-  exports->Set(NanNew<String>("geti8"), NanNew<FunctionTemplate>(geti8)->GetFunction());
-  exports->Set(NanNew<String>("geti16"), NanNew<FunctionTemplate>(geti16)->GetFunction());
-  exports->Set(NanNew<String>("geti32"), NanNew<FunctionTemplate>(geti32)->GetFunction());
+  exports->Set(NanNew<String>("get_int8_t"), NanNew<FunctionTemplate>(get_int8_t)->GetFunction());
+  exports->Set(NanNew<String>("get_int16_t"), NanNew<FunctionTemplate>(get_int16_t)->GetFunction());
+  exports->Set(NanNew<String>("get_int32_t"), NanNew<FunctionTemplate>(get_int32_t)->GetFunction());
+  exports->Set(NanNew<String>("get_uint8_t"), NanNew<FunctionTemplate>(get_uint8_t)->GetFunction());
+  exports->Set(NanNew<String>("get_uint16_t"), NanNew<FunctionTemplate>(get_uint16_t)->GetFunction());
+  exports->Set(NanNew<String>("get_uint32_t"), NanNew<FunctionTemplate>(get_uint32_t)->GetFunction());
+  exports->Set(NanNew<String>("get_float"), NanNew<FunctionTemplate>(get_float)->GetFunction());
+  exports->Set(NanNew<String>("get_double"), NanNew<FunctionTemplate>(get_double)->GetFunction());
   
-  exports->Set(NanNew<String>("seti8"), NanNew<FunctionTemplate>(seti8)->GetFunction());
-  exports->Set(NanNew<String>("seti16"), NanNew<FunctionTemplate>(seti16)->GetFunction());
-  exports->Set(NanNew<String>("seti32"), NanNew<FunctionTemplate>(seti32)->GetFunction());
+  exports->Set(NanNew<String>("set_int8_t"), NanNew<FunctionTemplate>(set_int8_t)->GetFunction());
+  exports->Set(NanNew<String>("set_int16_t"), NanNew<FunctionTemplate>(set_int16_t)->GetFunction());
+  exports->Set(NanNew<String>("set_int32_t"), NanNew<FunctionTemplate>(set_int32_t)->GetFunction());
+  exports->Set(NanNew<String>("set_uint8_t"), NanNew<FunctionTemplate>(set_uint8_t)->GetFunction());
+  exports->Set(NanNew<String>("set_uint16_t"), NanNew<FunctionTemplate>(set_uint16_t)->GetFunction());
+  exports->Set(NanNew<String>("set_uint32_t"), NanNew<FunctionTemplate>(set_uint32_t)->GetFunction());
+  exports->Set(NanNew<String>("set_float"), NanNew<FunctionTemplate>(set_float)->GetFunction());
+  exports->Set(NanNew<String>("set_double"), NanNew<FunctionTemplate>(set_double)->GetFunction());
   
   // const v8::PropertyAttribute attribs = (v8::PropertyAttribute) (v8::ReadOnly | v8::DontDelete);
   // I don't know how to get this f&* attribs on properties now in new native modules
