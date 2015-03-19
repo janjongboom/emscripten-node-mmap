@@ -2,7 +2,7 @@
   "name": "emscripten-node-mmap",
   "description": "mmap() driver for emscripten's NODEFS",
   "author": "Jan Jongboom <janjongboom@gmail.com>",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "main": "./index.js",
   "repository": {
     "type": "git",
